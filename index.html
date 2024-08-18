@@ -1,0 +1,406 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Timer(s) System 0.3.1a</title>
+<meta name="description" content="Time tracker with multiple timers, pause, switch, billable, and unbillable time.">
+<script>
+var timers = [
+	['Misc', 0, null],
+	['Internal', 0, null],
+	['A', 0, null],
+	['B', 0, null],
+	['C', 0, null],
+];
+</script>
+
+<style>
+	body {
+		color: #000;
+		background: #FFF;
+		font-family: Verdana, Helvetica, Arial, Sans-serif;
+		font-size: 76%;
+		padding: 10px;
+	}
+	h1 { margin-top: 0; }
+	div#header { 
+		border-bottom: 1px solid #808080;
+	}
+	ul.timers { 
+		list-style: none;
+		margin: 1.12em 0;
+		padding: 0;
+	}
+		ul.timers li { 
+			margin-bottom: 1.12em;
+		}
+		ul.timers li.divider { 
+			border-bottom: 1px dotted #808080;
+			margin-bottom: 1.12em;
+		}
+		ul.timers label { 
+			display: block;
+			padding: 0 0 0.2em 0;
+			font-weight: bold;
+			font-size: 100%;
+			width: 1%;
+			white-space: nowrap
+		}
+			ul.timers label:hover { 
+				color: #F60;
+			}
+		ul.timers span.timer input { 
+			font-size: 400%;
+			outline: none;
+			padding: 0;
+		}
+		ul.timers li.main span.timer input { 
+			color: #000;
+		}
+		ul.timers li.nonBillable span.timer input { 
+			color: #C00;
+		}
+		ul.timers li.billable span.timer input { 
+			color: #0C0;
+		}
+		ul.timers ol { 
+			list-style-type: none;
+			margin: 1.12em 0;
+			padding: 0 0.2em;
+			max-height: 3.36em;
+			overflow-y: auto;
+			border: 1px solid #CCC;
+			background: #EEE;
+		}
+		ul.timers ol li { 
+			margin-bottom: 0;
+		}
+			ul.timers ol li strong { 
+				font-family: 'Courier New', Courier, Sans-serif;
+			}
+	div#clock { 
+		line-height: 1.26;
+		font-size: 150%;
+		color: #00C;
+		position: absolute;
+		top: 10px;
+		right: 10px;
+		background: #FFF;
+		padding: 0 0 0.5em 0.5em;
+		border: 1px solid #808080;
+		border-top: none; border-right: none;
+		text-align: right;
+	}
+		div#clock span span { 
+			display: inline;
+			white-space: nowrap;
+		}
+	span#date { display: block; }
+	span#time { color: #0C0; }
+</style>
+
+<script>
+	var timerActiveID = 1;
+
+	var timerTextFocus = '';
+
+	function formatHours(hours) {
+		var str = hours;
+		return (hours < 10) ? '0' + str : str;
+	}
+	function formatMinutes(minutes) {
+		var str = minutes;
+		return (minutes < 10) ? '0' + str : str;
+	}
+	function formatSeconds(seconds) {
+		var str = seconds;
+		return (seconds < 10) ? '0' + str : str;
+	}
+	function secondsToTime(number) {
+		var seconds = 0;
+		var minutes = 0;
+		var hours = 0;
+
+		for (s = 0; s < number; s++) {
+			seconds++;
+
+			if (seconds == 60) {
+				minutes++;
+
+				if (minutes == 60) {
+					hours++;
+
+					minutes = 0;
+				}
+
+				seconds = 0;
+			}
+		}
+
+		return formatHours(hours) + ':' + formatMinutes(minutes) + ':' + formatSeconds(seconds);
+	}
+	function timerControl(timerID, command) {
+		var id = timerID - 1;
+		var timerElement = document.getElementById('timer' + timerID);
+		var timerText = document.getElementById('text' + timerID);
+		var timerList = document.getElementById('list' + timerID);
+		var timerLog = document.getElementById('t' + timerList.value + 'log');
+
+		if (command ==  'play') {
+			var timerTime = timerElement.value.split(':');
+
+			var seconds = timerTime[2] * 1;
+			var minutes = timerTime[1] * 1;
+			var hours = timerTime[0] * 1;
+
+			seconds++;
+			if (seconds == 60) {
+				minutes++;
+				if (minutes == 60) {
+					hours++;
+					minutes = 0;
+				}
+				seconds = 0;
+			}
+
+			timerElement.value = formatHours(hours) + ':' + formatMinutes(minutes) + ':' + formatSeconds(seconds);
+
+			timers[id][2] = self.setTimeout('timerControl(' + timerID + ', \'' + command + '\')', 1000);
+
+			if (timerTextFocus != 'text' + timerID) {
+				document.getElementById('text' + timerID).disabled = false;
+				document.getElementById('text' + timerID).focus();
+			}
+
+			timerTextFocus = 'text' + timerID;
+		}
+
+		if (command == 'pause') {
+			clearTimeout(timers[id][2]);
+
+			timers[id][2] = null;
+		}
+
+		if (command == 'reset') {
+			command = 'save';
+		}
+
+		if (command == 'save') {
+			timerNote = (timerText.value != '') ? timerText.value : 'Untitled';
+			timerLogLIs = timerLog.getElementsByTagName('li').length;
+			timerLogNewCount = timerLogLIs + 1;
+			timerLog.innerHTML = '<li><strong>' + timerLogNewCount + '. ' + timerElement.value + '</strong> &raquo; ' + timerNote + '</li>\n' + timerLog.innerHTML;
+			timerText.value = '';
+			document.getElementById('save' + timerID).disabled = true;
+
+			clearTimeout(timers[id][2]);
+			timerElement.value = '00:00:00';
+
+			timerActiveID = timerID;
+		}
+
+	}
+	function timerSwitch(timerID) {
+		var timerText = document.getElementById('text' + timerActiveID);
+
+		if (timerID != timerActiveID) {
+			if (timerText.value == '') {
+				alert('You cannot switch timers without saving the previous timer first.  Please fill in a description for the previous timer before saving.');
+				timerText.focus();
+			}
+			else {
+				timerControl(timerActiveID, 'save');
+				document.getElementById('text' + timerActiveID).disabled = true;
+
+				timerControl(timerID, 'play');
+				timerActiveID = timerID;
+			}
+		}
+		else {
+			timerControl(timerID, 'pause');
+			document.getElementById('text' + timerActiveID).disabled = true;
+
+			timerControl(1, 'play');
+			timerActiveID = 1;
+		}
+	}
+	function timerSave(timerID) {
+		timerControl(timerID, 'save');
+		timerControl(timerActiveID, 'play');
+
+		document.getElementById('text' + timerID).blur();
+		document.getElementById('text' + timerActiveID).focus();
+	}
+	function handleEnter(inField, e) {
+		var charCode;
+
+		if (e && e.which) {
+			charCode = e.which;
+		}
+		else if (window.event) {
+			e = window.event;
+			charCode = e.keyCode;
+		}
+
+		if (charCode == 13) {
+			if (inField.value) {
+				var timerID = (inField.id.replace(/text/, '') * 1);
+
+				timerSave(timerID);
+			}
+		}
+	}
+	function init() {
+		var timerTitle, timerSeconds;
+
+		for (t = 0; t < timers.length; t++) {
+			timerID = t + 1;
+			timerTitle = timers[t][0];
+			timerSeconds = timers[t][1];
+
+			timerTime = secondsToTime(timerSeconds);
+
+			document.getElementById('timer' + timerID).value = timerTime;
+		}
+
+		timerControl(1, 'play');
+	}
+
+</script>
+</head>
+<body onload="init();">
+<div id="header">
+	<h1>Timer(s) System 0.3.1a</h1>
+	<p>Licensed to: <strong>Demo</strong></p>
+</div>
+<ul class="timers">
+	<li id="t1item" class="main divider">
+		<span class="timer">
+			<label for="timer1">Misc</label>
+			<input type="button" id="timer1" value="00:00:00">
+		</span>
+		<span class="save">
+			<input disabled="disabled" type="button" id="save1" value="Save To..." onclick="timerSave(1);">
+		</span>
+
+		<span class="list">
+			<select id="list1">
+				<option selected="selected" value="1">Misc</option>
+				<option value="2">Internal</option>
+				<option value="3">A</option>
+				<option value="4">B</option>
+				<option value="5">C</option>
+			</select>
+		</span>
+
+		<span class="text">
+			<input disabled="disabled" type="text" id="text1" size="30" value="" onkeypress="handleEnter(this, event)" onkeyup="document.getElementById('save1').disabled = (this.value) ? false : true;">
+		</span>
+		<ol id="t1log">
+		</ol>
+	</li>
+	<li id="t2item" class="nonBillable divider">
+		<span class="timer">
+			<label for="timer2">Internal</label>
+			<input type="button" id="timer2" value="00:00:00" onclick="timerSwitch(2);">
+		</span>
+		<span class="save">
+			<input disabled="disabled" type="button" id="save2" value="Save To..." onclick="timerSave(2);">
+		</span>
+
+		<span class="list">
+			<select id="list2">
+				<option value="1">Misc</option>
+				<option selected="selected" value="2">Internal</option>
+				<option value="3">A</option>
+				<option value="4">B</option>
+				<option value="5">C</option>
+			</select>
+		</span>
+
+		<span class="text">
+			<input disabled="disabled" type="text" id="text2" size="30" value="" onkeypress="handleEnter(this, event)" onkeyup="document.getElementById('save2').disabled = (this.value) ? false : true;">
+		</span>
+		<ol id="t2log">
+		</ol>
+	</li>
+	<li id="t3item" class="billable">
+		<span class="timer">
+			<label for="timer3">A</label>
+			<input type="button" id="timer3" value="00:00:00" onclick="timerSwitch(3);">
+		</span>
+		<span class="save">
+			<input disabled="disabled" type="button" id="save3" value="Save To..." onclick="timerSave(3);">
+		</span>
+
+		<span class="list">
+			<select id="list3">
+				<option value="1">Misc</option>
+				<option value="2">Internal</option>
+				<option selected="selected" value="3">A</option>
+				<option value="4">B</option>
+				<option value="5">C</option>
+			</select>
+		</span>
+
+		<span class="text">
+			<input disabled="disabled" type="text" id="text3" size="30" value="" onkeypress="handleEnter(this, event)" onkeyup="document.getElementById('save3').disabled = (this.value) ? false : true;">
+		</span>
+		<ol id="t3log">
+		</ol>
+	</li>
+	<li id="t4item" class="billable divider">
+		<span class="timer">
+			<label for="timer4">B</label>
+			<input type="button" id="timer4" value="00:00:00" onclick="timerSwitch(4);">
+		</span>
+		<span class="save">
+			<input disabled="disabled" type="button" id="save4" value="Save To..." onclick="timerSave(4);">
+		</span>
+
+		<span class="list">
+			<select id="list4">
+				<option value="1">Misc</option>
+				<option value="2">Internal</option>
+				<option value="3">A</option>
+				<option selected="selected" value="4">B</option>
+				<option value="5">C</option>
+			</select>
+		</span>
+
+		<span class="text">
+			<input disabled="disabled" type="text" id="text4" size="30" value="" onkeypress="handleEnter(this, event)" onkeyup="document.getElementById('save4').disabled = (this.value) ? false : true;">
+		</span>
+		<ol id="t4log">
+		</ol>
+	</li>
+	<li id="t5item" class="billable divider">
+		<span class="timer">
+			<label for="timer5">C</label>
+			<input type="button" id="timer5" value="00:00:00" onclick="timerSwitch(5);">
+		</span>
+		<span class="save">
+			<input disabled="disabled" type="button" id="save5" value="Save To..." onclick="timerSave(5);">
+		</span>
+
+		<span class="list">
+			<select id="list5">
+				<option value="1">Misc</option>
+				<option value="2">Internal</option>
+				<option value="3">A</option>
+				<option value="4">B</option>
+				<option selected="selected" value="5">C</option>
+			</select>
+		</span>
+
+		<span class="text">
+			<input disabled="disabled" type="text" id="text5" size="30" value="" onkeypress="handleEnter(this, event)" onkeyup="document.getElementById('save5').disabled = (this.value) ? false : true;">
+		</span>
+		<ol id="t5log">
+		</ol>
+	</li>
+</ul>
+</body>
+</html>
